@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S Star Event Planner — Manager Saurabh</title>
+<style>
+  :root{
+    --ink:#0b0906;
+    --ink-2:#141009;
+    --gold:#c9a04a;
+    --gold-bright:#e8c468;
+    --gold-dim:#8a6a2c;
+    --ivory:#f3ecdb;
+    --maroon:#3a0d0d;
+    --glass: rgba(20,16,9,0.72);
+    --font-display: 'Cormorant Garamond', 'Marcellus', serif;
+    --font-body: 'Jost', 'Inter', sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Marcellus&family=Jost:wght@300;400;500;600&display=swap');
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--ink);overflow:hidden;font-family:var(--font-body);color:var(--ivory);}
+  #canvas-wrap{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  .veil{
+    position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 30%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+    z-index:5;
+  }
+
+  /* ---- Top brand bar ---- */
+  #brandbar{
+    position:fixed;top:0;left:0;right:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 34px;
+    pointer-events:none;
+  }
+  #brandbar .logo{
+    font-family:var(--font-display);
+    font-weight:600;font-size:22px;letter-spacing:2px;color:var(--gold-bright);
+    text-shadow:0 0 18px rgba(232,196,104,0.35);
+  }
+  #brandbar .logo span{color:var(--ivory);font-weight:500;}
+  #langtoggle{
+    pointer-events:all;
+    display:flex;gap:0;border:1px solid var(--gold-dim);border-radius:30px;overflow:hidden;
+    background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);
+  }
+  #langtoggle button{
+    padding:8px 18px;background:transparent;border:none;color:var(--ivory);
+    font-family:var(--font-body);font-size:13px;letter-spacing:1px;cursor:pointer;
+    transition:all .25s ease;
+  }
+  #langtoggle button.active{background:var(--gold);color:#1a1206;font-weight:600;}
+
+  #voice-toggle{
+    pointer-events:all;margin-left:10px;
+    width:38px;height:38px;border-radius:50%;
+    border:1px solid var(--gold-dim);background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);
+    color:var(--gold-bright);font-size:16px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:all .2s ease;
+  }
+  #voice-toggle.off{color:#6a5a3a;border-color:#3a2a18;}
+  #topbar-right{display:flex;align-items:center;pointer-events:none;}
+  #list-service-btn{
+    pointer-events:all;margin-left:10px;
+    padding:0 14px;height:38px;border-radius:19px;
+    border:1px solid var(--gold-dim);background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);
+    color:var(--gold-bright);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;
+    white-space:nowrap;transition:all .2s ease;
+  }
+  #list-service-btn:hover{background:rgba(201,160,74,0.18);}
+  #ls-status.ok{color:#7fbf7f;}
+  #ls-status.err{color:#c94a4a;}
+
+  /* ---- Live chat row inside dialogue ---- */
+  #chat-row{
+    display:flex;align-items:center;gap:8px;margin-top:16px;
+    border-top:1px solid rgba(201,160,74,0.2);padding-top:14px;
+  }
+  #mic-btn{
+    flex-shrink:0;width:42px;height:42px;border-radius:50%;
+    border:1px solid var(--gold-dim);background:rgba(201,160,74,0.08);color:var(--gold-bright);
+    font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:all .2s ease;
+  }
+  #mic-btn:hover{background:rgba(201,160,74,0.2);}
+  #mic-btn.listening{
+    background:#c94a4a;border-color:#c94a4a;color:#fff;
+    animation:mic-pulse 1.1s infinite;
+  }
+  @keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,74,74,0.5);}50%{box-shadow:0 0 0 10px rgba(201,74,74,0);}}
+  #chat-input{
+    flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(201,160,74,0.3);
+    border-radius:24px;padding:11px 18px;color:var(--ivory);font-family:var(--font-body);
+    font-size:14px;outline:none;transition:border-color .2s ease;
+  }
+  #chat-input:focus{border-color:var(--gold-bright);}
+  #chat-send{
+    flex-shrink:0;width:42px;height:42px;border-radius:50%;border:none;
+    background:var(--gold);color:#1a1206;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .2s ease;
+  }
+  #chat-send:hover{background:var(--gold-bright);}
+  #chat-send:disabled, #mic-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .thinking-dots{display:inline-flex;gap:4px;align-items:center;height:20px;}
+  .thinking-dots span{
+    width:6px;height:6px;border-radius:50%;background:var(--gold-bright);
+    animation:think-bounce 1.2s infinite;
+  }
+  .thinking-dots span:nth-child(2){animation-delay:.15s;}
+  .thinking-dots span:nth-child(3){animation-delay:.3s;}
+  @keyframes think-bounce{0%,60%,100%{opacity:.3;transform:translateY(0);}30%{opacity:1;transform:translateY(-4px);}}
+
+  #voice-unsupported-note{font-size:10.5px;color:#8a7a5a;margin-top:6px;display:none;}
+
+  /* ---- Manager dialogue panel ---- */
+  #dialogue{
+    position:fixed;left:50%;bottom:38px;transform:translateX(-50%);
+    width:min(680px,92vw);
+    background:var(--glass);
+    border:1px solid rgba(201,160,74,0.45);
+    border-radius:18px;
+    padding:22px 26px 20px;
+    backdrop-filter:blur(10px);
+    z-index:20;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+    opacity:0;transform:translateX(-50%) translateY(24px);
+    transition:opacity .6s ease, transform .6s ease;
+  }
+  #dialogue.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #dialogue .who{
+    display:flex;align-items:center;gap:10px;margin-bottom:8px;
+  }
+  #dialogue .who .dot{width:8px;height:8px;border-radius:50%;background:var(--gold-bright);box-shadow:0 0 10px var(--gold-bright);animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  #dialogue .who .name{font-family:var(--font-display);font-size:19px;color:var(--gold-bright);letter-spacing:1px;}
+  #dialogue .who .role{font-size:11px;letter-spacing:2px;color:var(--gold-dim);text-transform:uppercase;margin-left:2px;}
+  #dialogue-text{font-size:17px;line-height:1.55;color:var(--ivory);min-height:52px;font-weight:300;}
+  #dialogue-text .typed-cursor{opacity:.7;}
+  #choices{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+  .choice-btn{
+    flex:1 1 auto;min-width:150px;
+    background:linear-gradient(180deg, rgba(201,160,74,0.14), rgba(201,160,74,0.03));
+    border:1px solid var(--gold-dim);color:var(--ivory);
+    padding:12px 16px;border-radius:10px;
+    font-family:var(--font-body);font-size:14px;letter-spacing:.4px;cursor:pointer;
+    transition:all .25s ease;text-align:left;
+  }
+  .choice-btn .cb-title{display:block;font-weight:600;color:var(--gold-bright);font-size:14.5px;}
+  .choice-btn .cb-sub{display:block;font-size:11.5px;color:#cbb98a;margin-top:2px;font-weight:300;}
+  .choice-btn:hover{background:linear-gradient(180deg, rgba(201,160,74,0.3), rgba(201,160,74,0.08));border-color:var(--gold-bright);transform:translateY(-2px);}
+
+  /* ---- Room CTA ---- */
+  #room-cta{
+    position:fixed;left:50%;bottom:150px;transform:translateX(-50%);
+    z-index:19;opacity:0;pointer-events:none;transition:opacity .5s ease, transform .5s ease;
+  }
+  #room-cta.show{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(-6px);}
+  #room-cta button{
+    background:var(--gold);color:#1a1206;border:none;
+    padding:14px 30px;border-radius:40px;font-family:var(--font-body);
+    font-weight:600;font-size:14px;letter-spacing:1.5px;cursor:pointer;
+    box-shadow:0 10px 30px rgba(201,160,74,0.35);
+    display:flex;align-items:center;gap:8px;
+  }
+  #room-cta button:hover{background:var(--gold-bright);}
+  #room-cta .lock{font-size:15px;}
+
+  /* ---- back button ---- */
+  #backbtn{
+    position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:20;
+    background:rgba(0,0,0,0.4);border:1px solid var(--gold-dim);color:var(--gold-bright);
+    padding:9px 20px;border-radius:30px;font-size:12px;letter-spacing:1.5px;cursor:pointer;
+    opacity:0;pointer-events:none;transition:opacity .4s ease;font-family:var(--font-body);
+  }
+  #backbtn.show{opacity:1;pointer-events:all;}
+
+  /* ---- Modals ---- */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:50;background:rgba(5,3,1,0.72);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .35s ease;
+  }
+  .modal-overlay.show{opacity:1;pointer-events:all;}
+  .modal{
+    width:min(460px,90vw);max-height:88vh;overflow:auto;
+    background:linear-gradient(160deg, #171208, #0d0a05);
+    border:1px solid var(--gold-dim);border-radius:16px;
+    padding:30px 30px 26px;
+    box-shadow:0 30px 90px rgba(0,0,0,0.6);
+    transform:scale(.93);transition:transform .35s ease;
+  }
+  .modal-overlay.show .modal{transform:scale(1);}
+  .modal h2{
+    font-family:var(--font-display);color:var(--gold-bright);font-size:26px;margin:0 0 4px;letter-spacing:.5px;
+  }
+  .modal .sub{font-size:13px;color:#cbb98a;margin-bottom:22px;font-weight:300;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold-dim);margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;padding:11px 13px;border-radius:8px;border:1px solid rgba(201,160,74,0.35);
+    background:rgba(255,255,255,0.03);color:var(--ivory);font-family:var(--font-body);font-size:14px;
+    outline:none;transition:border-color .2s ease;
+  }
+  .field input:focus, .field select:focus{border-color:var(--gold-bright);}
+  .modal-actions{display:flex;gap:10px;margin-top:22px;}
+  .btn-primary{
+    flex:1;background:var(--gold);color:#1a1206;border:none;padding:13px;border-radius:9px;
+    font-weight:600;font-size:14px;letter-spacing:.8px;cursor:pointer;
+  }
+  .btn-primary:hover{background:var(--gold-bright);}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-ghost{
+    background:transparent;color:#cbb98a;border:1px solid var(--gold-dim);padding:13px 18px;border-radius:9px;
+    font-size:13px;cursor:pointer;
+  }
+  .pay-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .pay-opt{
+    padding:13px 10px;text-align:center;border:1px solid rgba(201,160,74,0.35);border-radius:10px;
+    cursor:pointer;font-size:13px;color:var(--ivory);transition:all .2s ease;
+    display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;
+  }
+  .pay-opt.active{border-color:var(--gold-bright);background:rgba(201,160,74,0.12);color:var(--gold-bright);}
+  .pay-opt .badge{
+    width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:-0.5px;
+  }
+  .badge.gpay{background:#fff;color:#4285F4;border:1px solid #e2e2e2;}
+  .badge.phonepe{background:#5f259f;color:#fff;}
+  .badge.upi{background:#097939;color:#fff;font-size:8px;}
+  .badge.card{background:#3a2a18;color:var(--gold-bright);}
+
+  .upi-app-panel{
+    border:1px solid rgba(201,160,74,0.3);border-radius:12px;padding:18px;margin-bottom:16px;
+    background:rgba(255,255,255,0.02);text-align:center;
+  }
+  #qr-box{
+    width:168px;height:168px;margin:0 auto 12px;background:#fff;border-radius:10px;padding:8px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .upi-app-panel .scan-note{font-size:12px;color:#cbb98a;margin-bottom:14px;line-height:1.5;}
+  .open-app-btn{
+    display:inline-flex;align-items:center;gap:8px;width:100%;justify-content:center;
+    background:rgba(201,160,74,0.12);border:1px solid var(--gold-dim);color:var(--gold-bright);
+    padding:12px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none;
+  }
+  .open-app-btn:hover{background:rgba(201,160,74,0.22);}
+  .demo-note{
+    font-size:11px;color:#8a7a5a;margin-top:10px;line-height:1.5;text-align:left;
+    border-top:1px dashed rgba(201,160,74,0.2);padding-top:10px;
+  }
+  .confirm-paid-row{margin-top:14px;}
+  .summary-row{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;color:#d8cba4;border-bottom:1px dashed rgba(201,160,74,0.2);}
+  .summary-row.total{color:var(--gold-bright);font-weight:600;font-size:16px;border-bottom:none;margin-top:6px;}
+  .paying-state{text-align:center;padding:26px 0;}
+  .spinner{
+    width:44px;height:44px;border-radius:50%;border:3px solid rgba(201,160,74,0.2);border-top-color:var(--gold-bright);
+    margin:0 auto 18px;animation:spin 1s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .success-icon{
+    width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,#e8c468,#8a6a2c);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:#1a1206;
+  }
+
+  #loadscreen{
+    position:fixed;inset:0;z-index:100;background:var(--ink);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;transition:opacity .8s ease;
+  }
+  #loadscreen h1{font-family:var(--font-display);color:var(--gold-bright);font-size:30px;letter-spacing:3px;font-weight:500;}
+  #loadscreen .sub{color:var(--gold-dim);font-size:12px;letter-spacing:3px;margin-top:6px;text-transform:uppercase;}
+  #loadbar{width:220px;height:2px;background:rgba(201,160,74,0.2);margin-top:26px;position:relative;overflow:hidden;}
+  #loadbar::after{
+    content:'';position:absolute;left:-40%;top:0;bottom:0;width:40%;background:var(--gold-bright);
+    animation:load 1.1s ease-in-out infinite;
+  }
+  @keyframes load{0%{left:-40%;}100%{left:100%;}}
+
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<div id="loadscreen">
+  <h1>S STAR EVENT PLANNER</h1>
+  <div class="sub">Preparing your visit</div>
+  <div id="loadbar"></div>
+</div>
+
+<div id="canvas-wrap"></div>
+<div class="veil"></div>
+
+<div id="brandbar">
+  <div class="logo">S STAR <span>EVENT PLANNER</span></div>
+  <div id="topbar-right">
+    <div id="langtoggle">
+      <button id="lang-en" class="active">ENGLISH</button>
+      <button id="lang-hi">हिंदी</button>
+    </div>
+    <button id="voice-toggle" title="Toggle Saurabh's voice">🔊</button>
+    <button id="list-service-btn" title="List your service on S Star">+ List Your Service</button>
+  </div>
+</div>
+
+<button id="backbtn">← BACK TO LOBBY</button>
+
+<div id="dialogue">
+  <div class="who">
+    <span class="dot"></span>
+    <span class="name">Saurabh</span>
+    <span class="role">Guest Relations Manager</span>
+  </div>
+  <div id="dialogue-text"></div>
+  <div id="choices"></div>
+  <div id="chat-row">
+    <button id="mic-btn" title="Speak to Saurabh">🎤</button>
+    <input type="text" id="chat-input" placeholder="Ask Saurabh anything…" />
+    <button id="chat-send" title="Send">➤</button>
+  </div>
+  <div id="voice-unsupported-note">Voice input isn't supported in this browser — try Chrome on desktop or Android.</div>
+</div>
+
+<div id="room-cta">
+  <button id="enter-room-btn"><span class="lock">🔒</span><span id="enter-room-label">ENTER THE CATERING SUITE</span></button>
+</div>
+
+<!-- Registration Modal -->
+<div class="modal-overlay" id="modal-register">
+  <div class="modal">
+    <h2 id="reg-title">Reserve Your Access</h2>
+    <div class="sub" id="reg-sub">A few details before Saurabh unlocks the room for you.</div>
+    <div class="field">
+      <label id="lbl-name">Full Name</label>
+      <input type="text" id="reg-name" placeholder="Sahil Sharma">
+    </div>
+    <div class="field">
+      <label id="lbl-phone">Phone / WhatsApp</label>
+      <input type="tel" id="reg-phone" placeholder="+91 9XXXXXXXXX">
+    </div>
+    <div class="field">
+      <label id="lbl-email">Email</label>
+      <input type="email" id="reg-email" placeholder="you@email.com">
+    </div>
+    <div class="field">
+      <label id="lbl-date">Event Date</label>
+      <input type="date" id="reg-date">
+    </div>
+    <div class="field">
+      <label id="lbl-guests">Guest Count</label>
+      <select id="reg-guests">
+        <option value="50-100">50 – 100</option>
+        <option value="100-250">100 – 250</option>
+        <option value="250-500">250 – 500</option>
+        <option value="500+">500+</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="reg-cancel">Cancel</button>
+      <button class="btn-primary" id="reg-submit">Continue to Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- List Your Service Modal (vendor submissions) -->
+<div class="modal-overlay" id="modal-list-service">
+  <div class="modal">
+    <h2 id="ls-title">List Your Service</h2>
+    <div class="sub" id="ls-sub">Tell us about your business — we'll review it before it goes live on the site.</div>
+    <div class="field">
+      <label id="ls-lbl-name">Business Name</label>
+      <input type="text" id="ls-name" placeholder="e.g. Balaghat Fresh Florals">
+    </div>
+    <div class="field">
+      <label id="ls-lbl-category">Service Category</label>
+      <input type="text" id="ls-category" placeholder="e.g. Mehendi Artist, Tent House, Makeup">
+    </div>
+    <div class="field">
+      <label id="ls-lbl-description">Short Description</label>
+      <textarea id="ls-description" rows="3" maxlength="600" placeholder="What do you offer, and what makes you stand out?" style="width:100%;background:transparent;border:1px solid rgba(201,160,74,0.3);border-radius:8px;color:inherit;padding:10px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div class="field">
+      <label id="ls-lbl-phone">Phone / WhatsApp</label>
+      <input type="tel" id="ls-phone" placeholder="+91 9XXXXXXXXX">
+    </div>
+    <div class="field">
+      <label id="ls-lbl-city">City</label>
+      <input type="text" id="ls-city" placeholder="Balaghat">
+    </div>
+    <div id="ls-status" style="font-size:12px;margin-top:6px;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="ls-cancel">Cancel</button>
+      <button class="btn-primary" id="ls-submit">Submit for Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="modal-payment">
+  <div class="modal" id="payment-modal-inner">
+    <div id="pay-form-state">
+      <h2 id="pay-title">Secure the Suite</h2>
+      <div class="sub" id="pay-sub">Refundable booking token to access the live experience.</div>
+      <div class="pay-options">
+        <div class="pay-opt active" data-method="gpay"><span class="badge gpay">G</span><span>Google Pay</span></div>
+        <div class="pay-opt" data-method="phonepe"><span class="badge phonepe">Pe</span><span>PhonePe</span></div>
+        <div class="pay-opt" data-method="upi"><span class="badge upi">UPI</span><span id="lbl-other-upi">Other UPI</span></div>
+        <div class="pay-opt" data-method="card"><span class="badge card">₹</span><span id="lbl-card">Card</span></div>
+      </div>
+
+      <div class="upi-app-panel" id="upi-app-panel">
+        <div id="qr-box"></div>
+        <div class="scan-note" id="scan-note">Scan this QR with <b id="scan-app-name">Google Pay</b>, or tap below to open it directly on your phone.</div>
+        <a href="#" id="open-app-btn" class="open-app-btn" target="_blank" rel="noopener">
+          <span id="open-app-icon">📲</span><span id="open-app-text">Open Google Pay</span>
+        </a>
+        <div class="demo-note" id="demo-note">This QR is generated live from a standard UPI payment link (amount + note pre-filled) — scan or tap opens your GPay / PhonePe / any UPI app directly. In production this would run through a gateway (Razorpay/Cashfree) so the payment auto-confirms server-side instead of self-declared.</div>
+      </div>
+
+      <div class="field" id="upi-id-field" style="display:none;">
+        <label id="lbl-upi">Your UPI ID (optional)</label>
+        <input type="text" id="pay-upi" placeholder="yourname@upi">
+      </div>
+
+      <div class="field" id="card-fields" style="display:none;">
+        <label id="lbl-card-num">Card Number</label>
+        <input type="text" id="pay-card-num" placeholder="4111 1111 1111 1111" maxlength="19">
+        <div style="display:flex;gap:10px;margin-top:10px;">
+          <div style="flex:1;"><input type="text" id="pay-card-exp" placeholder="MM/YY" maxlength="5"></div>
+          <div style="flex:1;"><input type="text" id="pay-card-cvv" placeholder="CVV" maxlength="3"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <div class="summary-row"><span id="sum-service-label">Service</span><span id="sum-service-val">—</span></div>
+        <div class="summary-row"><span id="sum-token-label">Booking Token</span><span>₹499</span></div>
+        <div class="summary-row total"><span id="sum-total-label">Total Payable</span><span>₹499</span></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="pay-cancel">Cancel</button>
+        <button class="btn-primary" id="pay-submit">I've Completed the Payment</button>
+      </div>
+    </div>
+    <div id="pay-loading-state" style="display:none;">
+      <div class="paying-state">
+        <div class="spinner"></div>
+        <div id="pay-loading-text" style="color:#d8cba4;font-size:14px;">Processing your payment…</div>
+      </div>
+    </div>
+    <div id="pay-success-state" style="display:none;">
+      <div class="paying-state">
+        <div class="success-icon">✓</div>
+        <h2 id="pay-success-title" style="text-align:center;">Payment Successful</h2>
+        <div class="sub" id="pay-success-sub" style="text-align:center;">Saurabh is opening the door for you now.</div>
+        <div class="modal-actions">
+          <button class="btn-primary" id="pay-success-continue" style="width:100%;">Enter the Room</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+/* ================= CONTENT / LANGUAGE ================= */
+const LANG = {
+  en: {
+    greet: "Namaste, and welcome to S Star. I'm Saurabh — I'll be looking after you today. Tell me, what would you like to arrange for your celebration?",
+    choices: [
+      {key:'catering', title:'Catering', sub:'Live kitchens, tasting counters', line:"Excellent choice. Our chefs are plating right now — come, let me show you the kitchen suite."},
+      {key:'decor', title:'Decoration', sub:'Florals, lighting, stage design', line:"Beautiful taste. Our design team is dressing the hall as we speak — step this way."},
+      {key:'dj', title:'DJ & Music', sub:'Live sound, dance floor setup', line:"Now we're talking. Our sound team is testing the floor tonight — let me take you in."}
+    ],
+    enterLabel: {catering:'ENTER THE CATERING SUITE', decor:'ENTER THE DECOR STUDIO', dj:'ENTER THE SOUND LOUNGE'},
+    roomLine: {
+      catering: "This is our live catering kitchen — every dish tasted twice before it reaches your table. Registered guests may step inside and speak with our head chef directly.",
+      decor: "This is our decor atelier — florals, drapery and lighting, all built to your theme. Step inside once you're registered, and pick your palette with our designer.",
+      dj: "This is our sound lounge — where we tune every track to your crowd. Register to step in and hear tonight's set."
+    },
+    lockedNote: "This room is reserved for registered guests only.",
+    regTitle: "Reserve Your Access",
+    regSub: "A few details before Saurabh unlocks the room for you.",
+    payTitle: "Secure the Suite",
+    paySub: "Refundable booking token to access the live experience.",
+    processing: "Processing your payment…",
+    successTitle: "Payment Successful",
+    successSub: "Saurabh is opening the door for you now.",
+    welcomeInside: "Welcome inside. Look around — everything you see is being prepared for your event. I'll be right here if you have questions.",
+    backLine: "Welcome back to the lobby. Where else would you like to look?",
+    otherUpi: "Other UPI",
+    cardLabel: "Card",
+    upiIdLabel: "Your UPI ID (optional)",
+    cardNumLabel: "Card Number",
+    scanNoteTpl: (app)=> `Scan this QR with ${app}, or tap below to open it directly on your phone.`,
+    demoNote: "This QR is generated live from a standard UPI payment link (amount + note pre-filled) — scan or tap opens your GPay / PhonePe / any UPI app directly. In production this would run through a gateway (Razorpay/Cashfree) so the payment auto-confirms server-side instead of self-declared.",
+    fieldName: "Full Name",
+    fieldPhone: "Phone / WhatsApp",
+    fieldEmail: "Email",
+    fieldDate: "Event Date",
+    fieldGuests: "Guest Count",
+    regCancel: "Cancel",
+    regContinue: "Continue to Payment",
+    payCancel: "Cancel"
+  },
+  hi: {
+    greet: "नमस्ते, S Star में आपका स्वागत है। मैं सौरभ हूँ — आज आपकी सेवा में हाज़िर हूँ। बताइए, आपके फंक्शन के लिए क्या तैयार करवाना है?",
+    choices: [
+      {key:'catering', title:'कैटरिंग', sub:'लाइव किचन, टेस्टिंग काउंटर', line:"बढ़िया चुनाव! हमारे शेफ़ अभी प्लेटिंग कर रहे हैं — आइए, किचन सूट दिखाता हूँ।"},
+      {key:'decor', title:'डेकोरेशन', sub:'फूल, लाइटिंग, स्टेज डिज़ाइन', line:"शानदार पसंद है आपकी! हमारी डिज़ाइन टीम अभी हॉल सजा रही है — इस तरफ आइए।"},
+      {key:'dj', title:'DJ और म्यूज़िक', sub:'लाइव साउंड, डांस फ्लोर सेटअप', line:"अब बात बनी! हमारी साउंड टीम आज रात फ्लोर टेस्ट कर रही है — चलिए अंदर।"}
+    ],
+    enterLabel: {catering:'कैटरिंग सूट में प्रवेश करें', decor:'डेकोर स्टूडियो में प्रवेश करें', dj:'साउंड लाउंज में प्रवेश करें'},
+    roomLine: {
+      catering: "यह हमारी लाइव कैटरिंग किचन है — हर डिश आपकी टेबल तक पहुँचने से पहले दो बार चखी जाती है। रजिस्टर्ड मेहमान अंदर जाकर हमारे हेड शेफ़ से सीधे बात कर सकते हैं।",
+      decor: "यह हमारा डेकोर स्टूडियो है — फूल, ड्रेपरी और लाइटिंग, आपकी थीम के हिसाब से। रजिस्टर करने के बाद अंदर आइए और डिज़ाइनर के साथ अपना पैलेट चुनिए।",
+      dj: "यह हमारा साउंड लाउंज है — जहाँ हर ट्रैक आपकी भीड़ के हिसाब से ट्यून होता है। अंदर आने और आज रात का सेट सुनने के लिए रजिस्टर कीजिए।"
+    },
+    lockedNote: "यह कमरा सिर्फ़ रजिस्टर्ड मेहमानों के लिए आरक्षित है।",
+    regTitle: "अपनी एंट्री रिज़र्व करें",
+    regSub: "सौरभ आपके लिए कमरा खोलें, उससे पहले कुछ जानकारी चाहिए।",
+    payTitle: "सूट सुरक्षित करें",
+    paySub: "लाइव अनुभव में प्रवेश के लिए रिफंडेबल बुकिंग टोकन।",
+    processing: "आपका भुगतान प्रोसेस हो रहा है…",
+    successTitle: "भुगतान सफल",
+    successSub: "सौरभ अभी आपके लिए दरवाज़ा खोल रहे हैं।",
+    welcomeInside: "अंदर आपका स्वागत है। देखिए चारों ओर — जो कुछ आप देख रहे हैं, वह सब आपके फंक्शन के लिए तैयार हो रहा है। कोई सवाल हो तो मैं यहीं हूँ।",
+    backLine: "लॉबी में वापस आपका स्वागत है। अब आप और क्या देखना चाहेंगे?",
+    otherUpi: "अन्य UPI",
+    cardLabel: "कार्ड",
+    upiIdLabel: "आपकी UPI ID (वैकल्पिक)",
+    cardNumLabel: "कार्ड नंबर",
+    scanNoteTpl: (app)=> `इस QR को ${app} से स्कैन करें, या नीचे टैप करके सीधे अपने फ़ोन में खोलें।`,
+    demoNote: "यह QR एक स्टैंडर्ड UPI पेमेंट लिंक से लाइव जनरेट होता है (अमाउंट और नोट पहले से भरे हुए) — स्कैन करें या टैप करें, आपका GPay / PhonePe / कोई भी UPI ऐप सीधे खुल जाएगा। प्रोडक्शन में यह एक गेटवे (Razorpay/Cashfree) से गुज़रेगा ताकि पेमेंट सर्वर पर अपने आप कन्फ़र्म हो, सेल्फ़-डिक्लेयर्ड नहीं।",
+    fieldName: "पूरा नाम",
+    fieldPhone: "फ़ोन / व्हाट्सएप",
+    fieldEmail: "ईमेल",
+    fieldDate: "इवेंट की तारीख़",
+    fieldGuests: "मेहमानों की संख्या",
+    regCancel: "रद्द करें",
+    regContinue: "भुगतान की ओर बढ़ें",
+    payCancel: "रद्द करें"
+  }
+};
+let currentLang = 'en';
+let currentService = null;
+let registered = false;
+
+/* ================= THREE.JS SCENE ================= */
+const wrap = document.getElementById('canvas-wrap');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0b0906, 0.028);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 3.2, 11);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+wrap.appendChild(renderer.domElement);
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Lights
+const ambient = new THREE.AmbientLight(0x2a2015, 1.1);
+scene.add(ambient);
+const goldLight = new THREE.PointLight(0xe8c468, 2.2, 30);
+goldLight.position.set(0, 6, 2);
+goldLight.castShadow = true;
+scene.add(goldLight);
+const fillLight = new THREE.PointLight(0x6a4a2a, 1.0, 25);
+fillLight.position.set(-8, 4, -4);
+scene.add(fillLight);
+const rimLight = new THREE.SpotLight(0xffe9b8, 1.4, 40, Math.PI/6, 0.5);
+rimLight.position.set(6,10,6);
+scene.add(rimLight);
+
+// Floor
+const floorMat = new THREE.MeshStandardMaterial({color:0x1c1610, metalness:0.6, roughness:0.25});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60,60), floorMat);
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// grid inlay for luxury marble look
+const grid = new THREE.GridHelper(60,30,0x8a6a2c,0x2a2015);
+grid.position.y = 0.01;
+scene.add(grid);
+
+// Columns (lobby)
+const colMat = new THREE.MeshStandardMaterial({color:0x2a2015, metalness:0.4, roughness:0.5});
+const goldTrim = new THREE.MeshStandardMaterial({color:0xc9a04a, metalness:0.9, roughness:0.25, emissive:0x3a2a10, emissiveIntensity:0.3});
+const lobbyGroup = new THREE.Group();
+const colPositions = [[-6,0,-4],[6,0,-4],[-6,0,4],[6,0,4],[-9,0,-8],[9,0,-8]];
+colPositions.forEach(p=>{
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.4,7,16), colMat);
+  col.position.set(p[0],3.5,p[2]);
+  col.castShadow = true;
+  lobbyGroup.add(col);
+  const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.45,0.3,16), goldTrim);
+  capTop.position.set(p[0],6.9,p[2]);
+  lobbyGroup.add(capTop);
+  const capBot = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.55,0.3,16), goldTrim);
+  capBot.position.set(p[0],0.15,p[2]);
+  lobbyGroup.add(capBot);
+});
+
+// Chandelier
+const chandGroup = new THREE.Group();
+const chandCore = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5,1), goldTrim);
+chandGroup.add(chandCore);
+for(let i=0;i<10;i++){
+  const a = (i/10)*Math.PI*2;
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), goldTrim);
+  gem.position.set(Math.cos(a)*1.1, -0.3+Math.sin(i)*0.1, Math.sin(a)*1.1);
+  chandGroup.add(gem);
+}
+chandGroup.position.set(0,6.6,0);
+lobbyGroup.add(chandGroup);
+
+// back wall with arch
+const wallMat = new THREE.MeshStandardMaterial({color:0x151009, metalness:0.2, roughness:0.8});
+const backWall = new THREE.Mesh(new THREE.PlaneGeometry(30,10), wallMat);
+backWall.position.set(0,5,-10);
+lobbyGroup.add(backWall);
+
+scene.add(lobbyGroup);
+
+// r128 has no THREE.CapsuleGeometry (added in r142) — build an equivalent from a cylinder + two sphere caps
+function makeCapsule(radius, length, material, segments){
+  segments = segments || 8;
+  const group = new THREE.Group();
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, segments), material);
+  cyl.castShadow = true;
+  group.add(cyl);
+  const topCap = new THREE.Mesh(new THREE.SphereGeometry(radius, segments, 6), material);
+  topCap.position.y = length/2;
+  topCap.castShadow = true;
+  group.add(topCap);
+  const botCap = new THREE.Mesh(new THREE.SphereGeometry(radius, segments, 6), material);
+  botCap.position.y = -length/2;
+  botCap.castShadow = true;
+  group.add(botCap);
+  return group;
+}
+
+// Manager avatar (stylized figure)
+function buildManager(){
+  const g = new THREE.Group();
+  const suitMat = new THREE.MeshStandardMaterial({color:0x0d0a06, metalness:0.3, roughness:0.6});
+  const skinMat = new THREE.MeshStandardMaterial({color:0xc48a5a, roughness:0.6});
+  const goldAccent = new THREE.MeshStandardMaterial({color:0xe8c468, metalness:0.9, roughness:0.2, emissive:0x3a2a10, emissiveIntensity:0.4});
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.46,1.5,16), suitMat);
+  body.position.y = 1.6;
+  body.castShadow = true;
+  g.add(body);
+
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(0.12,1.4,0.05), goldAccent);
+  sash.position.set(0.15,1.6,0.42);
+  sash.rotation.z = 0.15;
+  g.add(sash);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32,20,20), skinMat);
+  head.position.y = 2.55;
+  head.castShadow = true;
+  g.add(head);
+
+  const turban = new THREE.Mesh(new THREE.SphereGeometry(0.36,20,12,0,Math.PI*2,0,Math.PI/1.7), goldAccent);
+  turban.position.y = 2.68;
+  g.add(turban);
+
+  const armL = makeCapsule(0.09, 0.7, suitMat);
+  armL.position.set(-0.48,1.75,0);
+  armL.rotation.z = 0.3;
+  g.add(armL);
+  const armR = makeCapsule(0.09, 0.7, suitMat);
+  armR.position.set(0.48,1.75,0);
+  armR.rotation.z = -0.3;
+  g.add(armR);
+
+  g.position.set(0,0,2.5);
+  return g;
+}
+const manager = buildManager();
+scene.add(manager);
+
+// Kitchen / decor / dj room content builders (revealed on service select)
+let roomGroup = new THREE.Group();
+roomGroup.visible = false;
+scene.add(roomGroup);
+let staffAnims = [];
+
+function clearRoom(){
+  scene.remove(roomGroup);
+  roomGroup = new THREE.Group();
+  staffAnims = [];
+  scene.add(roomGroup);
+}
+
+function buildStaffFigure(color){
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({color:0xf3ecdb, roughness:0.7});
+  const accentMat = new THREE.MeshStandardMaterial({color:color, roughness:0.5});
+  const body = makeCapsule(0.22, 0.7, bodyMat);
+  body.position.y = 0.9;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18,16,16), new THREE.MeshStandardMaterial({color:0xc48a5a}));
+  head.position.y = 1.5;
+  g.add(head);
+  const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.22,12), new THREE.MeshStandardMaterial({color:0xffffff}));
+  hat.position.y = 1.68;
+  g.add(hat);
+  const armL = makeCapsule(0.06, 0.5, bodyMat);
+  armL.position.set(-0.28,1.0,0.15);
+  armL.rotation.x = -0.6;
+  g.add(armL);
+  const armR = makeCapsule(0.06, 0.5, accentMat);
+  armR.position.set(0.28,1.0,0.15);
+  armR.rotation.x = -0.6;
+  g.add(armR);
+  return g;
+}
+
+function buildCateringRoom(){
+  const floorM = new THREE.MeshStandardMaterial({color:0x241a10, metalness:0.3, roughness:0.4});
+  const rf = new THREE.Mesh(new THREE.PlaneGeometry(60,60), floorM);
+  rf.rotation.x = -Math.PI/2;
+  roomGroup.add(rf);
+
+  const counterMat = new THREE.MeshStandardMaterial({color:0x3a2a18, metalness:0.2, roughness:0.6});
+  const topMat = new THREE.MeshStandardMaterial({color:0xe8c468, metalness:0.7, roughness:0.3});
+  for(let i=-1;i<=1;i++){
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(3.2,0.9,1.1), counterMat);
+    counter.position.set(i*4, 0.45, -3);
+    roomGroup.add(counter);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(3.3,0.06,1.2), topMat);
+    top.position.set(i*4, 0.92, -3);
+    roomGroup.add(top);
+  }
+  const colors = [0xc9a04a, 0x8a6a2c, 0x3a0d0d];
+  [-4,0,4].forEach((x,i)=>{
+    const staff = buildStaffFigure(colors[i%colors.length]);
+    staff.position.set(x, 0, -3.6);
+    roomGroup.add(staff);
+    staffAnims.push({obj:staff, base:x, phase:i*1.3, type:'tasting'});
+  });
+  // steam / plates as small emissive discs
+  for(let i=-1;i<=1;i++){
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.03,20), new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x332200, emissiveIntensity:0.2}));
+    plate.position.set(i*4, 0.96, -2.7);
+    roomGroup.add(plate);
+  }
+}
+
+function buildDecorRoom(){
+  const floorM = new THREE.MeshStandardMaterial({color:0x1a1420, metalness:0.3, roughness:0.4});
+  const rf = new THREE.Mesh(new THREE.PlaneGeometry(60,60), floorM);
+  rf.rotation.x = -Math.PI/2;
+  roomGroup.add(rf);
+  const stage = new THREE.Mesh(new THREE.BoxGeometry(6,0.4,3), new THREE.MeshStandardMaterial({color:0x3a2a18}));
+  stage.position.set(0,0.2,-4);
+  roomGroup.add(stage);
+  const flowerMat1 = new THREE.MeshStandardMaterial({color:0xe8c468, emissive:0x332200, emissiveIntensity:0.2});
+  const flowerMat2 = new THREE.MeshStandardMaterial({color:0xc94a4a});
+  for(let i=0;i<14;i++){
+    const a = (i/14)*Math.PI*2;
+    const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.18,10,10), i%2? flowerMat1: flowerMat2);
+    bloom.position.set(Math.cos(a)*4.5, 1.2+Math.sin(i*2)*0.4, -4+Math.sin(a)*2);
+    roomGroup.add(bloom);
+  }
+  const colors=[0xc9a04a,0x8a6a2c];
+  [-3,3].forEach((x,i)=>{
+    const staff = buildStaffFigure(colors[i]);
+    staff.position.set(x,0,-2.5);
+    roomGroup.add(staff);
+    staffAnims.push({obj:staff, base:x, phase:i*1.7, type:'arranging'});
+  });
+}
+
+function buildDJRoom(){
+  const floorM = new THREE.MeshStandardMaterial({color:0x0f0a14, metalness:0.5, roughness:0.3});
+  const rf = new THREE.Mesh(new THREE.PlaneGeometry(60,60), floorM);
+  rf.rotation.x = -Math.PI/2;
+  roomGroup.add(rf);
+  const booth = new THREE.Mesh(new THREE.BoxGeometry(3,1,1.2), new THREE.MeshStandardMaterial({color:0x1a1a1a, metalness:0.7, roughness:0.2}));
+  booth.position.set(0,0.5,-3.5);
+  roomGroup.add(booth);
+  const discoColors = [0xe8c468, 0x4ac9c9, 0xc94a8a];
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2;
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(0.15,3,8), new THREE.MeshStandardMaterial({color:discoColors[i%3], emissive:discoColors[i%3], emissiveIntensity:0.6, transparent:true, opacity:0.35}));
+    beam.position.set(Math.cos(a)*3, 2.5, -3.5+Math.sin(a)*3);
+    beam.rotation.x = Math.PI;
+    roomGroup.add(beam);
+  }
+  const staff = buildStaffFigure(0xe8c468);
+  staff.position.set(0,0,-2.6);
+  roomGroup.add(staff);
+  staffAnims.push({obj:staff, base:0, phase:0, type:'mixing'});
+}
+
+function buildVendorRoom(){
+  // Generic showcase room for vendor-submitted listings — works for any
+  // category since we can't hand-build custom geometry per submission.
+  // The vendor's actual name/description is shown in the dialogue text.
+  const floorM = new THREE.MeshStandardMaterial({color:0x14100a, metalness:0.3, roughness:0.55});
+  const rf = new THREE.Mesh(new THREE.PlaneGeometry(60,60), floorM);
+  rf.rotation.x = -Math.PI/2;
+  roomGroup.add(rf);
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.7,0.9,24), new THREE.MeshStandardMaterial({color:0x241a10, metalness:0.4, roughness:0.4}));
+  pedestal.position.set(0,0.45,-3.5);
+  roomGroup.add(pedestal);
+  const plaque = new THREE.Mesh(new THREE.BoxGeometry(1.1,0.06,0.7), new THREE.MeshStandardMaterial({color:0xe8c468, metalness:0.8, roughness:0.25}));
+  plaque.position.set(0,0.94,-3.5);
+  roomGroup.add(plaque);
+  [-2.4,2.4].forEach(x=>{
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(0.5,3.2,10), new THREE.MeshStandardMaterial({color:0xe8c468, emissive:0xe8c468, emissiveIntensity:0.4, transparent:true, opacity:0.22}));
+    beam.position.set(x,3.4,-3.6);
+    beam.rotation.x = Math.PI*0.92;
+    roomGroup.add(beam);
+  });
+  const staff = buildStaffFigure(0xe8c468);
+  staff.position.set(-1.3,0,-1.6);
+  roomGroup.add(staff);
+  staffAnims.push({obj:staff, base:-1.3, phase:0, type:'mixing'});
+}
+
+/* ================= UI / STATE LOGIC ================= */
+const dialogueEl = document.getElementById('dialogue');
+const dialogueText = document.getElementById('dialogue-text');
+const choicesEl = document.getElementById('choices');
+const roomCta = document.getElementById('room-cta');
+const backBtn = document.getElementById('backbtn');
+
+/* ---- Vendor listings (marketplace) ----
+   Anyone can submit via the "List Your Service" form; only ADMIN-APPROVED
+   listings ever reach this array, since /api/get-services only returns
+   status==='approved' entries. Fetched once on load. */
+let vendorListings = [];
+async function fetchVendorListings(){
+  try{
+    const res = await fetch('/api/services');
+    if(!res.ok) return;
+    const data = await res.json();
+    vendorListings = Array.isArray(data.services) ? data.services : [];
+  }catch(e){
+    // Backend not deployed yet, or no listings — fine, just show the built-in services.
+    vendorListings = [];
+  }
+}
+
+/* Shared button renderer — draws the built-in LANG choices plus any approved
+   vendor listings, used everywhere the choice list needs to (re)draw. */
+function renderChoiceButtons(){
+  const t = LANG[currentLang];
+  choicesEl.innerHTML = '';
+  t.choices.forEach(c=>{
+    const b = document.createElement('button');
+    b.className = 'choice-btn';
+    b.innerHTML = `<span class="cb-title">${c.title}</span><span class="cb-sub">${c.sub}</span>`;
+    b.onclick = ()=> selectService(c.key);
+    choicesEl.appendChild(b);
+  });
+  vendorListings.forEach(v=>{
+    const b = document.createElement('button');
+    b.className = 'choice-btn';
+    b.innerHTML = `<span class="cb-title">${v.businessName}</span><span class="cb-sub">${v.category}</span>`;
+    b.onclick = ()=> selectService(v.id);
+    choicesEl.appendChild(b);
+  });
+}
+function findVendorListing(id){
+  return vendorListings.find(v=>v.id===id);
+}
+
+/* ================= VOICE: SPEAK (TTS) ================= */
+let voiceEnabled = true;
+let cachedVoices = [];
+function refreshVoices(){
+  if(window.speechSynthesis) cachedVoices = window.speechSynthesis.getVoices();
+}
+if(window.speechSynthesis){
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+}
+
+/* ---- Deep/male-leaning voice preference, so Saurabh doesn't default to a
+   female-sounding system voice on devices that expose one first ---- */
+const MALE_VOICE_HINTS = ['male','man','hemant','madhur','prabhat','ravi','rishi','ajit','tarun','puneet','ajay','arjun','rohan','amit','aditya','vikram','dev','raj','sanjay'];
+const FEMALE_VOICE_HINTS = ['female','woman','girl','kalpana','lekha','swara','veena','priya','heera','deepa','divya','neerja','pooja','ananya','kajal'];
+function voiceMaleScore(v){
+  const n = (v.name||'').toLowerCase();
+  if(FEMALE_VOICE_HINTS.some(h=>n.includes(h))) return -1;
+  if(MALE_VOICE_HINTS.some(h=>n.includes(h))) return 1;
+  return 0;
+}
+function pickVoice(lang){
+  const target = lang==='hi' ? 'hi-IN' : 'en-IN';
+  let candidates = cachedVoices.filter(v=>v.lang===target);
+  if(!candidates.length) candidates = cachedVoices.filter(v=>v.lang && v.lang.startsWith(lang==='hi'?'hi':'en'));
+  if(!candidates.length) return null;
+  candidates = candidates.slice().sort((a,b)=> voiceMaleScore(b) - voiceMaleScore(a));
+  return candidates[0];
+}
+
+/* ---- "Ultron" voice profile ----
+   The Web Speech API only exposes pitch/rate/voice — there's no way to load a
+   custom synthetic voice or true vocal timbre in-browser without a paid neural
+   TTS service. This tunes those three controls as close to a deep, deliberate,
+   mechanical delivery as the platform allows.
+
+   IMPORTANT: hi-IN voice engines (on most browsers/OSes) are much lower-quality
+   than en-IN ones and break down / sound garbled at extreme pitch shifts. 0.32
+   was too low and made Hindi glitch instead of sounding deep. 0.6 stays inside
+   the range both engines render cleanly, so English and Hindi now sound like
+   the same consistent, deliberate voice rather than Hindi breaking apart. */
+const ULTRON_PITCH = 0.6;
+const ULTRON_RATE = 0.9;
+
+/* ---- Failure-tracking so a repeatedly-failing specific voice doesn't keep
+   silently failing forever — after 2 failures for a language, stop forcing a
+   particular voice object and let the browser use its own default for that
+   lang, which is far more reliable than a voice reference that keeps breaking. */
+let ttsFailCount = {en:0, hi:0};
+let ttsForceDefaultVoice = {en:false, hi:false};
+
+/* ---- Cloned-voice TTS (real Saurabh voice, via /api/voice-tts) ----
+   If that backend isn't deployed yet, this fails fast and falls back to the
+   browser's built-in TTS below — so the app keeps working either way. Once
+   /api/voice-tts is live (see api-voice-tts.js setup notes), this becomes
+   the primary voice automatically, no other code changes needed. */
+let clonedVoiceUnavailable = false;
+let currentClonedAudio = null;
+
+async function tryClonedVoiceSpeak(text){
+  if(clonedVoiceUnavailable) return false;
+  try{
+    if(currentClonedAudio){ currentClonedAudio.pause(); currentClonedAudio = null; }
+    const res = await fetch('/api/voice-tts', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text, lang: currentLang})
+    });
+    if(!res.ok) throw new Error('voice-tts endpoint unavailable');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    currentClonedAudio = audio;
+    audio.onended = ()=> URL.revokeObjectURL(url);
+    await audio.play();
+    return true;
+  }catch(e){
+    // No cloned-voice backend deployed, or it errored — fall back silently,
+    // every time, without retrying (avoids repeated slow failed requests).
+    clonedVoiceUnavailable = true;
+    return false;
+  }
+}
+
+async function speak(text){
+  if(!voiceEnabled || !text) return;
+  const clean = text.replace(/[*_#]/g,'');
+  const usedClonedVoice = await tryClonedVoiceSpeak(clean);
+  if(usedClonedVoice) return;
+  speakBrowserTTS(clean);
+}
+
+function speakBrowserTTS(clean){
+  if(!window.speechSynthesis) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+
+  // Chrome/Android bug: speak() called immediately after cancel() is often
+  // silently dropped — a short delay lets the cancel actually flush first.
+  // This alone is the most common cause of TTS "repeatedly failing".
+  setTimeout(()=>{
+    // If the engine got stuck paused from a previous failed utterance, unstick it.
+    if(synth.paused) synth.resume();
+
+    // Re-read voices fresh rather than trusting a possibly-stale cached list.
+    refreshVoices();
+
+    const u = new SpeechSynthesisUtterance(clean);
+    const langKey = currentLang;
+    u.lang = langKey==='hi' ? 'hi-IN' : 'en-IN';
+    u.rate = ULTRON_RATE;
+    u.pitch = ULTRON_PITCH;
+
+    if(!ttsForceDefaultVoice[langKey]){
+      const v = pickVoice(langKey);
+      if(v) u.voice = v;
+    }
+
+    u.onerror = ()=>{
+      ttsFailCount[langKey]++;
+      if(ttsFailCount[langKey] >= 2) ttsForceDefaultVoice[langKey] = true;
+    };
+    u.onend = ()=>{ ttsFailCount[langKey] = 0; };
+
+    try{ synth.speak(u); }catch(e){ /* worst case this one line stays silent */ }
+  }, 60);
+}
+document.getElementById('voice-toggle').onclick = ()=>{
+  voiceEnabled = !voiceEnabled;
+  const btn = document.getElementById('voice-toggle');
+  btn.textContent = voiceEnabled ? '🔊' : '🔇';
+  btn.classList.toggle('off', !voiceEnabled);
+  if(!voiceEnabled){
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    if(currentClonedAudio){ currentClonedAudio.pause(); currentClonedAudio = null; }
+  }
+};
+
+let typeTimer = null;
+function typeText(str, cb, opts){
+  opts = opts || {};
+  if(opts.speak !== false) speak(str);
+  clearTimeout(typeTimer);
+  dialogueText.textContent = '';
+  let i = 0;
+  function step(){
+    if(i <= str.length){
+      dialogueText.textContent = str.slice(0,i);
+      i++;
+      typeTimer = setTimeout(step, 14);
+    } else if(cb){ cb(); }
+  }
+  step();
+}
+
+function showDialogue(){ dialogueEl.classList.add('show'); }
+
+function renderLobbyDialogue(){
+  clearRoom();
+  roomGroup.visible = false;
+  lobbyGroup.visible = true;
+  manager.visible = true;
+  backBtn.classList.remove('show');
+  roomCta.classList.remove('show');
+  currentService = null;
+  const t = LANG[currentLang];
+  showDialogue();
+  typeText(t.greet, ()=>{
+    renderChoiceButtons();
+  });
+  animateCameraTo(new THREE.Vector3(0,3.2,11), new THREE.Vector3(0,2,0));
+}
+
+function selectService(key){
+  currentService = key;
+  const t = LANG[currentLang];
+  const choice = t.choices.find(c=>c.key===key);
+  choicesEl.innerHTML = '';
+  if(choice){
+    typeText(choice.line, ()=>{
+      setTimeout(()=>revealRoom(key), 400);
+    });
+    return;
+  }
+  const vendor = findVendorListing(key);
+  if(vendor){
+    const line = currentLang==='hi'
+      ? `बढ़िया! ${vendor.businessName} — चलिए इनकी सर्विस देखते हैं।`
+      : `Great choice! Let's take a look at ${vendor.businessName}'s setup.`;
+    typeText(line, ()=>{
+      setTimeout(()=>revealRoom(key), 400);
+    });
+  }
+}
+
+function showRoomScene(key){
+  clearRoom();
+  if(key==='catering') buildCateringRoom();
+  if(key==='decor') buildDecorRoom();
+  if(key==='dj') buildDJRoom();
+  if(findVendorListing(key)) buildVendorRoom();
+  roomGroup.visible = true;
+  lobbyGroup.visible = false;
+  backBtn.classList.add('show');
+  animateCameraTo(new THREE.Vector3(0,3.4,4), new THREE.Vector3(0,1,-4));
+}
+
+function revealRoom(key){
+  showRoomScene(key);
+  const t = LANG[currentLang];
+  const vendor = findVendorListing(key);
+  if(vendor){
+    const line = currentLang==='hi'
+      ? `${vendor.businessName} — ${vendor.description || vendor.category}. संपर्क: ${vendor.phone}${vendor.city ? ', '+vendor.city : ''}.`
+      : `${vendor.businessName} — ${vendor.description || vendor.category}. Contact: ${vendor.phone}${vendor.city ? ', '+vendor.city : ''}.`;
+    // Vendor listings are a free directory entry, not an S Star bookable
+    // service — never gate contact info behind S Star's own registration/payment.
+    typeText(line);
+    roomCta.classList.remove('show');
+    return;
+  }
+  typeText(t.roomLine[key] + (registered ? '' : '  '+t.lockedNote), ()=>{
+    document.getElementById('enter-room-label').textContent = t.enterLabel[key];
+    roomCta.classList.add('show');
+  });
+}
+
+backBtn.onclick = ()=>{
+  const t = LANG[currentLang];
+  typeText(t.backLine, ()=>{
+    renderChoiceButtons();
+  });
+  clearRoom();
+  roomGroup.visible = false;
+  lobbyGroup.visible = true;
+  backBtn.classList.remove('show');
+  roomCta.classList.remove('show');
+  animateCameraTo(new THREE.Vector3(0,3.2,11), new THREE.Vector3(0,2,0));
+};
+
+/* camera transition */
+let camAnim = null;
+function animateCameraTo(pos, look){
+  const startPos = camera.position.clone();
+  const startTime = performance.now();
+  const dur = 1400;
+  if(camAnim) cancelAnimationFrame(camAnim);
+  function step(now){
+    const p = Math.min(1, (now-startTime)/dur);
+    const e = 1 - Math.pow(1-p, 3);
+    camera.position.lerpVectors(startPos, pos, e);
+    camera.lookAt(look);
+    if(p<1) camAnim = requestAnimationFrame(step);
+  }
+  camAnim = requestAnimationFrame(step);
+}
+
+/* language toggle */
+document.getElementById('lang-en').onclick = ()=> setLang('en');
+document.getElementById('lang-hi').onclick = ()=> setLang('hi');
+function setLang(l){
+  currentLang = l;
+  document.getElementById('lang-en').classList.toggle('active', l==='en');
+  document.getElementById('lang-hi').classList.toggle('active', l==='hi');
+  const t = LANG[l];
+  document.getElementById('reg-title').textContent = t.regTitle;
+  document.getElementById('reg-sub').textContent = t.regSub;
+  document.getElementById('pay-title').textContent = t.payTitle;
+  document.getElementById('pay-sub').textContent = t.paySub;
+  document.getElementById('pay-success-title').textContent = t.successTitle;
+  document.getElementById('pay-success-sub').textContent = t.successSub;
+  document.getElementById('backbtn').textContent = l==='en' ? '← BACK TO LOBBY' : '← लॉबी में वापस';
+  document.getElementById('chat-input').placeholder = l==='en' ? 'Ask Saurabh anything…' : 'सौरभ से कुछ भी पूछिए…';
+  document.getElementById('lbl-name').textContent = t.fieldName;
+  document.getElementById('lbl-phone').textContent = t.fieldPhone;
+  document.getElementById('lbl-email').textContent = t.fieldEmail;
+  document.getElementById('lbl-date').textContent = t.fieldDate;
+  document.getElementById('lbl-guests').textContent = t.fieldGuests;
+  document.getElementById('reg-cancel').textContent = t.regCancel;
+  document.getElementById('reg-submit').textContent = t.regContinue;
+  document.getElementById('pay-cancel').textContent = t.payCancel;
+  if(modalPayment.classList.contains('show')){ setPayMethod(currentPayMethod); }
+  if(currentService){
+    revealRoom(currentService);
+  } else {
+    renderLobbyDialogue();
+  }
+}
+
+/* ================= REGISTRATION + PAYMENT FLOW ================= */
+const enterRoomBtn = document.getElementById('enter-room-btn');
+const modalRegister = document.getElementById('modal-register');
+const modalPayment = document.getElementById('modal-payment');
+
+/* ---- List Your Service (vendor marketplace submissions) ---- */
+const modalListService = document.getElementById('modal-list-service');
+document.getElementById('list-service-btn').onclick = ()=>{
+  document.getElementById('ls-name').value = '';
+  document.getElementById('ls-category').value = '';
+  document.getElementById('ls-description').value = '';
+  document.getElementById('ls-phone').value = '';
+  document.getElementById('ls-city').value = '';
+  const statusEl = document.getElementById('ls-status');
+  statusEl.style.display = 'none';
+  statusEl.className = '';
+  modalListService.classList.add('show');
+};
+document.getElementById('ls-cancel').onclick = ()=> modalListService.classList.remove('show');
+
+document.getElementById('ls-submit').onclick = async ()=>{
+  const businessName = document.getElementById('ls-name').value.trim();
+  const category = document.getElementById('ls-category').value.trim();
+  const description = document.getElementById('ls-description').value.trim();
+  const phone = document.getElementById('ls-phone').value.trim();
+  const city = document.getElementById('ls-city').value.trim();
+  const statusEl = document.getElementById('ls-status');
+  const isHi = currentLang==='hi';
+
+  if(!businessName || !category || !phone){
+    statusEl.textContent = isHi ? 'कृपया नाम, सेवा और फ़ोन नंबर भरें।' : 'Please fill in business name, category, and phone.';
+    statusEl.className = 'err';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  const submitBtn = document.getElementById('ls-submit');
+  submitBtn.disabled = true;
+  statusEl.textContent = isHi ? 'भेजा जा रहा है...' : 'Submitting...';
+  statusEl.className = '';
+  statusEl.style.display = 'block';
+
+  try{
+    const res = await fetch('/api/services', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({businessName, category, description, phone, city, lang: currentLang})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Submission failed');
+    statusEl.textContent = isHi
+      ? 'धन्यवाद! आपकी सेवा समीक्षा के लिए भेज दी गई है — स्वीकृति के बाद यह वेबसाइट पर दिखेगी।'
+      : "Thanks! Your service has been submitted for review — it'll appear on the site once approved.";
+    statusEl.className = 'ok';
+    setTimeout(()=> modalListService.classList.remove('show'), 2600);
+  }catch(e){
+    statusEl.textContent = isHi
+      ? 'अभी सबमिट नहीं हो सका — बैकएंड अभी डिप्लॉय नहीं हुआ है, या नेटवर्क समस्या है। बाद में फिर कोशिश करें।'
+      : "Couldn't submit right now — the backend may not be deployed yet, or there's a network issue. Please try again later.";
+    statusEl.className = 'err';
+  } finally {
+    submitBtn.disabled = false;
+  }
+};
+
+function openRegistrationFlow(){
+  if(!currentService){ return false; }
+  if(registered){
+    unlockRoomView();
+    return true;
+  }
+  modalRegister.classList.add('show');
+  return true;
+}
+
+enterRoomBtn.onclick = ()=> openRegistrationFlow();
+
+document.getElementById('reg-cancel').onclick = ()=> modalRegister.classList.remove('show');
+
+document.getElementById('reg-submit').onclick = ()=>{
+  const name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  if(!name || !phone){
+    document.getElementById('reg-name').style.borderColor = name? 'rgba(201,160,74,0.35)':'#c94a4a';
+    document.getElementById('reg-phone').style.borderColor = phone? 'rgba(201,160,74,0.35)':'#c94a4a';
+    return;
+  }
+  modalRegister.classList.remove('show');
+  // populate payment summary
+  const t = LANG[currentLang];
+  const choice = t.choices.find(c=>c.key===currentService);
+  document.getElementById('sum-service-val').textContent = choice ? choice.title : '—';
+  document.getElementById('sum-service-label').textContent = currentLang==='en' ? 'Service' : 'सेवा';
+  document.getElementById('sum-token-label').textContent = currentLang==='en' ? 'Booking Token' : 'बुकिंग टोकन';
+  document.getElementById('sum-total-label').textContent = currentLang==='en' ? 'Total Payable' : 'कुल भुगतान';
+  resetPaymentModal();
+  modalPayment.classList.add('show');
+};
+
+document.getElementById('pay-cancel').onclick = ()=> modalPayment.classList.remove('show');
+
+/* ---- UPI deep-link + QR ---- */
+const PAYEE_VPA = 'saurabhlilhare@naviaxis';   // real business UPI ID — payments route here
+const PAYEE_NAME = 'S Star Event Planner';
+const AMOUNT = '499.00';
+let qrInstance = null;
+let currentPayMethod = 'gpay';
+
+function serviceNote(){
+  const t = LANG[currentLang];
+  const choice = t.choices.find(c=>c.key===currentService);
+  return 'Booking token - ' + (choice ? choice.title : 'Event Service');
+}
+
+function buildUpiLink(){
+  const note = encodeURIComponent(serviceNote());
+  const name = encodeURIComponent(PAYEE_NAME);
+  return `upi://pay?pa=${PAYEE_VPA}&pn=${name}&am=${AMOUNT}&cu=INR&tn=${note}`;
+}
+
+function renderQR(){
+  const box = document.getElementById('qr-box');
+  box.innerHTML = '';
+  try{
+    if(typeof QRCode === 'undefined') throw new Error('QRCode library not loaded');
+    qrInstance = new QRCode(box, {
+      text: buildUpiLink(),
+      width: 150, height: 150,
+      colorDark: '#1a1206', colorLight: '#ffffff'
+    });
+  }catch(e){
+    box.innerHTML = `<a href="${buildUpiLink()}" target="_blank" rel="noopener" style="font-size:12px;color:#8a6a2c;text-decoration:underline;">Tap here to pay</a>`;
+  }
+}
+
+const appMeta = {
+  gpay:    {name:'Google Pay', icon:'📲', label:{en:'Open Google Pay', hi:'Google Pay खोलें'}},
+  phonepe: {name:'PhonePe',    icon:'📲', label:{en:'Open PhonePe',    hi:'PhonePe खोलें'}},
+  upi:     {name:'your UPI app', icon:'📲', label:{en:'Open UPI App',  hi:'UPI ऐप खोलें'}}
+};
+
+function setPayMethod(method){
+  const validMethods = ['gpay','phonepe','upi','card'];
+  if(!validMethods.includes(method)) method = 'gpay';
+  currentPayMethod = method;
+  document.querySelectorAll('.pay-opt').forEach(o=>o.classList.remove('active'));
+  const optEl = document.querySelector(`.pay-opt[data-method="${method}"]`);
+  if(optEl) optEl.classList.add('active');
+
+  const panel = document.getElementById('upi-app-panel');
+  const upiIdField = document.getElementById('upi-id-field');
+  const cardFields = document.getElementById('card-fields');
+  const submitBtn = document.getElementById('pay-submit');
+  const t = LANG[currentLang];
+
+  if(method==='gpay' || method==='phonepe' || method==='upi'){
+    panel.style.display = 'block';
+    upiIdField.style.display = method==='upi' ? 'block' : 'none';
+    cardFields.style.display = 'none';
+    const meta = appMeta[method];
+    const appLabel = method==='gpay' ? 'Google Pay' : method==='phonepe' ? 'PhonePe' : (currentLang==='en' ? 'your UPI app' : 'आपका UPI ऐप');
+    document.getElementById('scan-note').innerHTML = t.scanNoteTpl(`<b>${appLabel}</b>`);
+    document.getElementById('open-app-text').textContent = meta.label[currentLang];
+    document.getElementById('open-app-btn').href = buildUpiLink();
+    document.getElementById('demo-note').textContent = t.demoNote;
+    document.getElementById('lbl-upi').textContent = t.upiIdLabel;
+    renderQR();
+    submitBtn.textContent = currentLang==='en' ? "I've Completed the Payment" : 'मैंने भुगतान कर दिया है';
+  } else {
+    panel.style.display = 'none';
+    upiIdField.style.display = 'none';
+    cardFields.style.display = 'block';
+    document.getElementById('lbl-card-num').textContent = t.cardNumLabel;
+    submitBtn.textContent = currentLang==='en' ? 'Pay ₹499' : '₹499 का भुगतान करें';
+  }
+  document.getElementById('lbl-other-upi').textContent = t.otherUpi;
+  document.getElementById('lbl-card').textContent = t.cardLabel;
+}
+
+document.querySelectorAll('.pay-opt').forEach(el=>{
+  el.onclick = ()=> setPayMethod(el.dataset.method);
+});
+
+function resetPaymentModal(){
+  document.getElementById('pay-form-state').style.display = 'block';
+  document.getElementById('pay-loading-state').style.display = 'none';
+  document.getElementById('pay-success-state').style.display = 'none';
+  setPayMethod('gpay');
+}
+
+document.getElementById('pay-submit').onclick = ()=>{
+  document.getElementById('pay-form-state').style.display = 'none';
+  document.getElementById('pay-loading-state').style.display = 'block';
+  document.getElementById('pay-loading-text').textContent = LANG[currentLang].processing;
+  setTimeout(()=>{
+    document.getElementById('pay-loading-state').style.display = 'none';
+    document.getElementById('pay-success-state').style.display = 'block';
+    registered = true;
+    sendReceiptSilently();
+  }, 1800);
+};
+
+/* Fire-and-forget: emails/WhatsApps a PDF receipt via /api/send-receipt.
+   Never blocks or interrupts the guest's flow — if the backend isn't deployed
+   yet, this just fails quietly and nothing about the booking is affected. */
+function sendReceiptSilently(){
+  try{
+    const name = document.getElementById('reg-name').value.trim();
+    const phone = document.getElementById('reg-phone').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const guestCount = document.getElementById('reg-guests').value;
+    const date = document.getElementById('reg-date').value;
+    fetch('/api/send-receipt', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name, phone, email, guestCount, date,
+        service: currentService, amount: AMOUNT, lang: currentLang
+      })
+    }).catch(()=>{ /* silent — receipt backend not deployed yet, that's fine */ });
+  }catch(e){ /* never let a receipt hiccup affect the booking flow */ }
+}
+
+document.getElementById('pay-success-continue').onclick = ()=>{
+  modalPayment.classList.remove('show');
+  unlockRoomView();
+};
+
+function unlockRoomView(){
+  roomCta.classList.remove('show');
+  const t = LANG[currentLang];
+  typeText(t.welcomeInside);
+  animateCameraTo(new THREE.Vector3(0,2.2,-1), new THREE.Vector3(0,1,-5));
+}
+
+/* ================= LIVE AI CONVERSATION (RAJESH THINKS + REPLIES) ================= */
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+const micBtn = document.getElementById('mic-btn');
+let conversationHistory = [];
+let aiBusy = false;
+
+function saurabhSystemPrompt(){
+  const langName = currentLang==='hi' ? 'Hindi (Devanagari script), warm and bold Hinglish tone allowed' : 'English, with a confident Indian hospitality tone';
+  return `You are Saurabh, the Guest Relations Manager at "S Star Event Planner", a luxury hotel & event service brand in India (catering, decoration, DJ/music). Personality: bold, warm, confident, persuasive, genuinely helpful — like a top 5-star hotel manager who makes every guest feel important. Keep replies SHORT: 1-3 sentences, spoken out loud, no bullet points, no markdown.
+
+Reply strictly in ${langName}.
+
+Conversation state: current service being viewed = ${currentService || 'none (guest is in the lobby)'}; guest has registered & paid = ${registered}.
+
+If the guest expresses clear interest in a specific service, set "action" to move them there. If they ask to book/register/pay and a service is already selected, set action to "register". Otherwise set action to "none". Only change action away from "none" when the guest's intent is clear — don't force it.
+
+Respond ONLY with raw JSON, no markdown fences, no preamble, in exactly this shape:
+{"reply": "your short spoken reply here", "action": "catering" | "decor" | "dj" | "register" | "none"}`;
+}
+
+function setChatBusy(busy){
+  aiBusy = busy;
+  chatInput.disabled = busy;
+  chatSend.disabled = busy;
+  micBtn.disabled = busy;
+}
+
+async function askSaurabh(userMessage){
+  if(!userMessage || aiBusy) return;
+  setChatBusy(true);
+  choicesEl.innerHTML = '';
+  dialogueText.innerHTML = '<span class="thinking-dots"><span></span><span></span><span></span></span>';
+
+  conversationHistory.push({role:'user', content:userMessage});
+  if(conversationHistory.length > 12) conversationHistory = conversationHistory.slice(-12);
+
+  try{
+    const res = await fetch("/api/proxy", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-5",
+        max_tokens: 300,
+        system: saurabhSystemPrompt(),
+        messages: conversationHistory
+      })
+    });
+    const data = await res.json();
+    const rawText = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    let parsed;
+    try{
+      const cleaned = rawText.replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+      parsed = JSON.parse(cleaned);
+    }catch(e){
+      parsed = {reply: rawText || (currentLang==='hi' ? "Maaf kijiye, dobara kahiye?" : "Sorry, could you say that again?"), action:'none'};
+    }
+    conversationHistory.push({role:'assistant', content: rawText});
+
+    typeText(parsed.reply, ()=>{ handleAIAction(parsed.action); }, {speak:true});
+  }catch(err){
+    const msg = currentLang==='hi'
+      ? "Live chat abhi is device par kaam nahi kar raha — is website ka apna backend (api/proxy) deploy aur connect hone tak yeh feature kaam nahi karega. Neeche diye buttons se seedha service dekh sakte hain."
+      : "Live chat isn't reachable right now — this feature needs this website's own backend (api/proxy) to be deployed and connected. You can still use the buttons below to explore each service.";
+    typeText(msg, ()=>{
+      renderChoiceButtons();
+    }, {speak:true});
+  } finally {
+    setChatBusy(false);
+  }
+}
+
+function handleAIAction(action){
+  if(action==='register'){
+    openRegistrationFlow();
+    return;
+  }
+  if((action==='catering' || action==='decor' || action==='dj') && action !== currentService){
+    currentService = action;
+    showRoomScene(action);
+    const t = LANG[currentLang];
+    document.getElementById('enter-room-label').textContent = t.enterLabel[action];
+    setTimeout(()=> roomCta.classList.add('show'), 300);
+  }
+}
+
+chatSend.onclick = ()=>{
+  const val = chatInput.value.trim();
+  if(!val) return;
+  chatInput.value = '';
+  askSaurabh(val);
+};
+chatInput.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ chatSend.click(); }
+});
+
+/* ---- Voice input (speech-to-text) ---- */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+if(SpeechRecognitionAPI){
+  recognition = new SpeechRecognitionAPI();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (e)=>{
+    const transcript = e.results[0][0].transcript;
+    chatInput.value = transcript;
+    micBtn.classList.remove('listening');
+    askSaurabh(transcript);
+  };
+  recognition.onerror = ()=>{ micBtn.classList.remove('listening'); };
+  recognition.onend = ()=>{ micBtn.classList.remove('listening'); };
+
+  micBtn.onclick = ()=>{
+    if(aiBusy) return;
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    if(currentClonedAudio){ currentClonedAudio.pause(); currentClonedAudio = null; }
+    recognition.lang = currentLang==='hi' ? 'hi-IN' : 'en-IN';
+    try{
+      recognition.start();
+      micBtn.classList.add('listening');
+    }catch(e){ /* already listening */ }
+  };
+} else {
+  micBtn.style.display = 'none';
+  document.getElementById('voice-unsupported-note').style.display = 'block';
+}
+
+
+let clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  chandGroup.rotation.y = t*0.15;
+  manager.position.y = Math.sin(t*1.2)*0.03;
+  manager.rotation.y = Math.sin(t*0.4)*0.08;
+
+  staffAnims.forEach(s=>{
+    if(s.type==='tasting'){
+      s.obj.position.y = Math.abs(Math.sin(t*1.5+s.phase))*0.05;
+      s.obj.rotation.y = Math.sin(t*0.8+s.phase)*0.3;
+    } else if(s.type==='arranging'){
+      s.obj.rotation.y = Math.sin(t*0.6+s.phase)*0.5;
+      s.obj.position.y = Math.abs(Math.sin(t*1.1+s.phase))*0.04;
+    } else if(s.type==='mixing'){
+      s.obj.rotation.z = Math.sin(t*3)*0.05;
+      s.obj.position.y = Math.abs(Math.sin(t*4))*0.06;
+    }
+  });
+
+  goldLight.intensity = 2.0 + Math.sin(t*2)*0.15;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ================= BOOT ================= */
+window.addEventListener('load', ()=>{
+  fetchVendorListings().finally(()=>{
+    setTimeout(()=>{
+      document.getElementById('loadscreen').style.opacity = '0';
+      setTimeout(()=> document.getElementById('loadscreen').style.display='none', 800);
+      renderLobbyDialogue();
+    }, 900);
+  });
+});
+</script>
+</body>
+</html>
